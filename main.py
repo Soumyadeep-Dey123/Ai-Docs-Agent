@@ -12,12 +12,15 @@ client = OpenAI(
     api_key=os.getenv("GROQ_API_KEY"),
     base_url="https://api.groq.com/openai/v1"
 )
+messages = [
+    {"role": "system", "content": SYSTEM_PROMPT},     
+]
 
 def chat(user_input: str) -> str:
-    messages = [
-        {"role": "system", "content": SYSTEM_PROMPT},
-        {"role": "user", "content": user_input},
-    ]
+    messages.append({"role": "user", "content": user_input})
+
+    # print the messages in a readable format
+    print(f"Messages till now: {messages}", end="")
 
     # Round 1 — send messages + available tools
     response = client.chat.completions.create(
@@ -28,7 +31,7 @@ def chat(user_input: str) -> str:
     )
 
     message = response.choices[0].message
-
+    
     # Check if the model wants to call a tool
     if message.tool_calls:
         for tool_call in message.tool_calls:
@@ -55,9 +58,14 @@ def chat(user_input: str) -> str:
             messages=messages,
             tools=TOOLS,
         )
-        return response.choices[0].message.content
+        
+        assistant_reply = response.choices[0].message.content
+        messages.append({"role": "assistant", "content": assistant_reply})
+        return assistant_reply
 
-    # Model didn't need a tool, just return directly
+    # If no tool calls, just return the model's message
+    messages.append({"role": "assistant", "content": message.content})
+    # return the assistant's reply
     return message.content
 
 def main():
@@ -73,6 +81,7 @@ def main():
             break
 
         response = chat(user_input)
+        # response = chat("How to add two numbers in python")
         print(f"\nAgent: {response}\n")
 
 
